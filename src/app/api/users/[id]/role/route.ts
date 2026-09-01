@@ -9,8 +9,9 @@ export const dynamic = "force-dynamic";
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   try {
     const { id } = await context.params;
+    const actor = await requireCurrentActiveUser();
     const body = await readJson(request);
-    return NextResponse.json({ user: changeUserRole(await requireCurrentActiveUser(), id, body.role) });
+    return NextResponse.json({ user: changeUserRole(actor, id, body.role) });
   } catch (error) {
     return errorResponse(error);
   }
