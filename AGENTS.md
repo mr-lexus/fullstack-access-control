@@ -11,13 +11,21 @@
 
 ## Architecture boundaries
 
-- `src/domain` owns shared types, role definitions, capabilities, and error codes.
-- `src/server/data` owns the deterministic in-memory users, clients, and sessions.
-- `src/server/auth` owns session resolution and all authorization decisions.
-- `src/server/users` owns user mutation invariants.
-- `src/server/clients` owns server-side client pagination and access.
-- API handlers are HTTP adapters, not policy owners.
-- Client components never import the store or internal user records.
+- `src/domain` owns shared types, role definitions, pure domain helpers, and error codes.
+- `src/server/data` owns the process-local deterministic store and seeds.
+- `src/server/auth` owns authentication and reusable authorization policies.
+- `src/server/users` owns user operation enforcement and account invariants.
+- `src/server/clients` owns client content access enforcement and server-side pagination.
+- `src/app/api` contains HTTP adapters only.
+- `src/components` contains presentation and UX only.
+## Dependency direction
+
+- `src/domain` must not import `src/server`, `src/app`, or `src/components`.
+- `src/server` may depend on `src/domain` but never on UI/components.
+- Pages and route handlers may call server policies/services but must not mutate the store directly.
+- Client components may import pure domain types/constants/helpers but never `src/server`, session/store code, or `UserRecord`.
+- User mutations go through `user-service.ts`.
+- Client data access goes through `client-service.ts`.
 
 ## Non-negotiable invariants
 
@@ -35,11 +43,21 @@
 - IT cannot view content pages.
 - A role that can access Manage Users must also define its user visibility scope, typically through VIEW_ALL_USERS or VIEW_DIRECT_REPORTS.
 
+## Counter-intuitive project rules
+
+- Unauthenticated protected pages redirect to `/login`; authenticated but unauthorized protected pages return a real HTTP 403.
+- Protected API order is: authenticate the current active user → authorize the operation → parse/validate operation input → execute. Malformed unauthenticated requests still return 401.
+- A deactivated direct report is still a direct report, so managers must not filter reports by status.
+- A user may report to a deactivated manager; that relationship remains valid and is not repaired automatically.
+- Protected browser fetches hard-navigate to `/login` on 401; 403 remains a forbidden/error state and does not log out.
+- Protected auth-dependent pages and APIs must keep `force-dynamic`/`no-store` semantics where required; stale caching must not break immediate deactivation.
+- Preserve error precedence: `LAST_ACTIVE_IT` wins when it overlaps self-deactivation or self-demotion.
+
 ## Adding a fourth role
 
-- Define the role and its complete capability set in `src/domain/roles.ts`; the typed role map must remain exhaustive.
-- Role selectors must derive their options from the centralized role definition.
-- Navigation and user-management control visibility must derive from capabilities.
-- Route handlers must call shared capability or policy helpers rather than adding independent role comparisons.
-- Server object-level policies remain authoritative for target-specific decisions and account invariants.
-- Adding a role must not require searching React components or API routes for scattered literal role checks.
+- Add the role and its complete capability set in `src/domain/roles.ts`; the typed role map remains exhaustive.
+- Role selectors derive their options from the central role set.
+- Navigation and user-management control visibility derive from capabilities.
+- Object-level target behavior derives from centralized role/domain semantics.
+- Routes do not add independent literal role-name branching.
+- A role with access to Manage Users must also define its user visibility scope, typically through `VIEW_ALL_USERS` or `VIEW_DIRECT_REPORTS`.
