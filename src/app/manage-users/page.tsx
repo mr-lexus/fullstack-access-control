@@ -9,5 +9,5 @@ export default async function ManageUsersPage() {
   const auth = await getPageAuth(canManageUsers);
   if (auth.kind === "unauthenticated") redirect("/login");
   if (auth.kind === "forbidden") forbidden();
-  return <main><h1>Manage users</h1><p className="muted">The list is authorized and filtered by the server.</p><ManageUsersPanel /></main>;
+  return <main><header className="page-heading"><p className="eyebrow">Administration</p><h1>Manage users</h1><p className="muted">Create accounts and maintain the users available to your role.</p></header><ManageUsersPanel /></main>;
 }

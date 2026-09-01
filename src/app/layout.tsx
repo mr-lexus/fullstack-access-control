@@ -1,16 +1,32 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
-import { LogoutButton } from "@/components/logout-button";
+import { AppNavigation } from "@/components/app-navigation";
 import { getPageAuth } from "@/server/auth/current-user";
 import { canManageUsers, canViewContent } from "@/server/auth/permissions";
 
-export const metadata: Metadata = { title: "Access Control Demo" };
+export const metadata: Metadata = { title: "Access Control" };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const auth = await getPageAuth(() => true);
   const isAuthenticated = auth.kind === "authorized";
-  const canManage = isAuthenticated && canManageUsers(auth.user);
-  const canView = isAuthenticated && canViewContent(auth.user);
-  return <html lang="en"><body>{isAuthenticated && <nav className="nav"><Link href="/">Access Control</Link>{canManage && <Link href="/manage-users">Manage users</Link>}{canView && <><Link href="/content">Content</Link><Link href="/content/me">My profile</Link></>}<LogoutButton /></nav>}{children}</body></html>;
+  const items = isAuthenticated
+    ? [
+        ...(canManageUsers(auth.user) ? [{ href: "/manage-users", label: "Manage users" }] : []),
+        ...(canViewContent(auth.user)
+          ? [
+              { href: "/content", label: "Clients", exact: true, activePrefixes: ["/content/client/"] },
+              { href: "/content/me", label: "My profile" },
+            ]
+          : []),
+      ]
+    : [];
+
+  return (
+    <html lang="en">
+      <body>
+        {isAuthenticated && <AppNavigation items={items} />}
+        {children}
+      </body>
+    </html>
+  );
 }

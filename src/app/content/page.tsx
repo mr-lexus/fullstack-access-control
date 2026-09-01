@@ -9,5 +9,5 @@ export default async function ContentPage() {
   const auth = await getPageAuth(canViewContent);
   if (auth.kind === "unauthenticated") redirect("/login");
   if (auth.kind === "forbidden") forbidden();
-  return <main><h1>Client content</h1><p className="muted">Only one server-paginated page is requested at a time.</p><ClientTable /></main>;
+  return <main><header className="page-heading"><p className="eyebrow">Content</p><h1>Client directory</h1><p className="muted">Review client records available to your account.</p></header><ClientTable /></main>;
 }

@@ -16,5 +16,5 @@ export function LoginForm() {
     window.location.assign(payload.redirectTo ?? "/content");
   }
 
-  return <form onSubmit={submit} className="grid"><label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required /></label><label>Password<input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required /></label>{error && <p className="error">{error}</p>}<button disabled={busy} type="submit">{busy ? "Signing in…" : "Sign in"}</button></form>;
+  return <form onSubmit={submit} className="login-form"><label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" autoComplete="email" required /></label><label>Password<input value={password} onChange={(event) => setPassword(event.target.value)} type="password" autoComplete="current-password" required /></label>{error && <p className="notice notice-error" role="alert">{error}</p>}<button className="button button-primary button-block" disabled={busy} type="submit">{busy ? "Signing in…" : "Sign in"}</button></form>;
 }
