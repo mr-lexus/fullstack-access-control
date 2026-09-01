@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { resetStore, getStore } from "@/server/data/store";
-import { listUsers, updateUserProfile } from "@/server/users/user-service";
+import { changeUserRole, listUsers, updateUserProfile } from "@/server/users/user-service";
 import { AppError } from "@/domain/errors";
+import { ROLES } from "@/domain/roles";
 
 const actor = (id: string) => getStore().users.get(id)!;
 
@@ -21,6 +22,21 @@ describe("manager object-level permissions", () => {
     for (const id of ["dmytro", "anna", "ivan"]) {
       expect(() => updateUserProfile(anna, id, { fullName: "Nope" })).toThrowError(AppError);
       try { updateUserProfile(anna, id, { fullName: "Nope" }); } catch (error) { expect((error as AppError).code).toBe("FORBIDDEN"); }
+    }
+  });
+
+  it("rejects a direct report after IT promotes that user to manager", () => {
+    const ivan = actor("ivan");
+    const anna = actor("anna");
+
+    expect(changeUserRole(ivan, "olena", ROLES.MANAGER).role).toBe(ROLES.MANAGER);
+    expect(actor("olena").managerId).toBe("anna");
+
+    expect(() => updateUserProfile(anna, "olena", { fullName: "Nope" })).toThrowError(AppError);
+    try {
+      updateUserProfile(anna, "olena", { fullName: "Nope" });
+    } catch (error) {
+      expect((error as AppError).code).toBe("FORBIDDEN");
     }
   });
 

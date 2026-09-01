@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { AppError } from "@/domain/errors";
-import { CAPABILITIES } from "@/domain/roles";
+import { getLandingPath } from "@/server/auth/landing";
 import { authenticateCredentials, createSession, SESSION_COOKIE } from "@/server/auth/session";
-import { can } from "@/server/auth/permissions";
 import { readJson, errorResponse } from "@/server/http";
 
 export const runtime = "nodejs";
@@ -19,7 +18,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const sessionId = createSession(user.id);
     const response = NextResponse.json({
       user: { id: user.id, fullName: user.fullName, email: user.email, role: user.role },
-      redirectTo: can(user, CAPABILITIES.VIEW_ALL_USERS) ? "/manage-users" : "/content",
+      redirectTo: getLandingPath(user),
     });
     response.cookies.set(SESSION_COOKIE, sessionId, {
       httpOnly: true,

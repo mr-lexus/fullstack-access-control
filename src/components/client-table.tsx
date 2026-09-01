@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { handleUnauthenticatedResponse } from "./handle-unauthenticated-response";
 
 type Client = { id: string; name: string; company: string; country: string; status: string };
 type Page = { items: Client[]; page: number; limit: number; total: number };
@@ -10,7 +11,29 @@ export function ClientTable() {
   const [data, setData] = useState<Page | null>(null);
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
-  useEffect(() => { setData(null); void fetch(`/api/clients?page=${page}&limit=25`, { cache: "no-store" }).then(async (response) => { const payload = await response.json(); if (!response.ok) { setError(payload.error?.message ?? "Could not load clients."); return; } setData(payload); }); }, [page]);
+
+  useEffect(() => {
+    setData(null);
+    setError("");
+
+    async function load() {
+      const response = await fetch(`/api/clients?page=${page}&limit=25`, {
+        cache: "no-store",
+      });
+      if (handleUnauthenticatedResponse(response)) return;
+
+      const payload = await response.json();
+      if (!response.ok) {
+        setError(payload.error?.message ?? "Could not load clients.");
+        return;
+      }
+
+      setData(payload);
+    }
+
+    void load();
+  }, [page]);
+
   if (error) return <p className="notice notice-error" role="alert">{error}</p>;
   if (!data) return <div className="panel loading-state">Loading clients…</div>;
   const pageCount = Math.ceil(data.total / data.limit);
