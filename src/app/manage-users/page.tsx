@@ -14,9 +14,7 @@ export default async function ManageUsersPage() {
       <header className="page-heading">
         <p className="eyebrow">Administration</p>
         <h1>Manage users</h1>
-        <p className="muted">
-          Create accounts and maintain the users available to your role.
-        </p>
+        <p className="muted">View and manage users available to your role.</p>
       </header>
       <ManageUsersPanel />
     </main>

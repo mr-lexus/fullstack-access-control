@@ -16,8 +16,12 @@ type User = PublicUser;
 type ApiPayload = {
   users?: User[];
   user?: User;
-  error?: { message: string };
+  error?: { code?: string; message: string };
 };
+
+type MutationResult = { ok: true } | { ok: false; message: string };
+
+type MutationAction = "role" | "status" | "profile";
 
 type NewUser = {
   fullName: string;
@@ -71,35 +75,42 @@ export function ManageUsersPanel() {
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const [currentRole, setCurrentRole] = useState<Role | null>(null);
+  const [currentUser, setCurrentUser] = useState<PublicUser | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [newUser, setNewUser] = useState<NewUser>(initialNewUser);
-  const capabilities = getUserManagementCapabilities(currentRole);
+  const capabilities = getUserManagementCapabilities(currentUser?.role ?? null);
 
-  async function load() {
-    const [usersResponse, meResponse] = await Promise.all([
-      fetch("/api/users", { cache: "no-store" }),
-      fetch("/api/auth/me", { cache: "no-store" }),
-    ]);
-    if (
-      handleUnauthenticatedResponse(usersResponse) ||
-      handleUnauthenticatedResponse(meResponse)
-    )
-      return;
+  async function load(): Promise<boolean> {
+    try {
+      const [usersResponse, meResponse] = await Promise.all([
+        fetch("/api/users", { cache: "no-store" }),
+        fetch("/api/auth/me", { cache: "no-store" }),
+      ]);
+      if (
+        handleUnauthenticatedResponse(usersResponse) ||
+        handleUnauthenticatedResponse(meResponse)
+      )
+        return false;
 
-    const payload: ApiPayload = await usersResponse.json();
-    const me: ApiPayload = await meResponse.json();
+      const payload: ApiPayload = await usersResponse.json();
+      const me: ApiPayload = await meResponse.json();
 
-    if (!usersResponse.ok) {
-      setError(payload.error?.message ?? "Could not load users.");
-      return;
+      if (!usersResponse.ok) {
+        setError(payload.error?.message ?? "Could not load users.");
+        return false;
+      }
+      if (!meResponse.ok || !me.user) {
+        setError(me.error?.message ?? "Could not load current user.");
+        return false;
+      }
+
+      setUsers(payload.users ?? []);
+      setCurrentUser(me.user);
+      return true;
+    } catch {
+      setError("Could not load users.");
+      return false;
     }
-    if (!meResponse.ok || !me.user) {
-      setError(me.error?.message ?? "Could not load current user.");
-      return;
-    }
-
-    setUsers(payload.users ?? []);
-    setCurrentRole(me.user.role);
   }
 
   useEffect(() => {
@@ -110,53 +121,77 @@ export function ManageUsersPanel() {
     id: string,
     body: Record<string, string>,
     success: string,
-  ) {
+  ): Promise<MutationResult> {
     setError("");
     setMessage("");
     const endpoint =
       "role" in body ? "role" : "status" in body ? "status" : "profile";
-    const response = await fetch(`/api/users/${id}/${endpoint}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (handleUnauthenticatedResponse(response)) return;
+    try {
+      const response = await fetch("/api/users/" + id + "/" + endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (handleUnauthenticatedResponse(response)) {
+        return {
+          ok: false,
+          message: "Your session has expired. Please sign in again.",
+        };
+      }
 
-    const payload: ApiPayload = await response.json();
+      const payload: ApiPayload = await response.json();
 
-    if (!response.ok) {
-      setError(payload.error?.message ?? "Update failed.");
-      return;
+      if (!response.ok) {
+        return {
+          ok: false,
+          message: payload.error?.message ?? "Update failed.",
+        };
+      }
+
+      setMessage(success);
+      await load();
+      return { ok: true };
+    } catch {
+      return {
+        ok: false,
+        message: "Could not complete the update. Please try again.",
+      };
     }
-
-    setMessage(success);
-    await load();
   }
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isCreating) return;
+
+    setIsCreating(true);
     setError("");
     setMessage("");
-    const response = await fetch("/api/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...newUser,
-        managerId: newUser.managerId || null,
-      }),
-    });
-    if (handleUnauthenticatedResponse(response)) return;
+    try {
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newUser,
+          managerId: newUser.managerId || null,
+        }),
+      });
+      if (handleUnauthenticatedResponse(response)) return;
 
-    const payload: ApiPayload = await response.json();
+      const payload: ApiPayload = await response.json();
 
-    if (!response.ok) {
-      setError(payload.error?.message ?? "Create failed.");
-      return;
+      if (!response.ok) {
+        setError(payload.error?.message ?? "Create failed.");
+        return;
+      }
+
+      setMessage("User created.");
+      setNewUser(initialNewUser);
+      await load();
+    } catch {
+      setError("Could not create the user. Please try again.");
+    } finally {
+      setIsCreating(false);
     }
-
-    setMessage("User created.");
-    setNewUser(initialNewUser);
-    await load();
   }
 
   return (
@@ -240,8 +275,12 @@ export function ManageUsersPanel() {
             </label>
           </div>
           <div className="form-actions">
-            <button className="button button-primary" type="submit">
-              Create user
+            <button
+              className="button button-primary"
+              type="submit"
+              disabled={isCreating}
+            >
+              {isCreating ? "Creating..." : "Create user"}
             </button>
           </div>
         </form>
@@ -273,6 +312,7 @@ export function ManageUsersPanel() {
                 <UserRow
                   key={user.id}
                   user={user}
+                  currentUserId={currentUser?.id ?? null}
                   capabilities={capabilities}
                   update={update}
                 />
@@ -287,24 +327,51 @@ export function ManageUsersPanel() {
 
 function UserRow({
   user,
+  currentUserId,
   capabilities,
   update,
 }: {
   user: User;
+  currentUserId: string | null;
   capabilities: UserManagementCapabilities;
   update: (
     id: string,
     body: Record<string, string>,
     success: string,
-  ) => Promise<void>;
+  ) => Promise<MutationResult>;
 }) {
   const [name, setName] = useState(user.fullName);
   const [email, setEmail] = useState(user.email);
+  const [pendingAction, setPendingAction] = useState<MutationAction | null>(
+    null,
+  );
+  const [rowError, setRowError] = useState("");
+  const isSelf = currentUserId === user.id;
   const isActive = user.status === USER_STATUSES.ACTIVE;
   const canEditProfile =
     capabilities.canEditAnyUserProfile ||
     (capabilities.canEditDirectReportProfile &&
       !managesDirectReports(user.role));
+
+  async function runUpdate(
+    action: MutationAction,
+    body: Record<string, string>,
+    success: string,
+  ) {
+    if (pendingAction) return;
+
+    setPendingAction(action);
+    setRowError("");
+    const result = await update(user.id, body, success);
+    if (!result.ok) {
+      setRowError(result.message);
+      if (action === "profile") {
+        setName(user.fullName);
+        setEmail(user.email);
+      }
+    }
+    setPendingAction(null);
+  }
 
   return (
     <tr>
@@ -313,6 +380,7 @@ function UserRow({
           <input
             aria-label={`Name for ${user.fullName}`}
             value={name}
+            disabled={pendingAction === "profile"}
             onChange={(event) => setName(event.target.value)}
           />
         ) : (
@@ -325,6 +393,7 @@ function UserRow({
             aria-label={`Email for ${user.fullName}`}
             type="email"
             value={email}
+            disabled={pendingAction === "profile"}
             onChange={(event) => setEmail(event.target.value)}
           />
         ) : (
@@ -332,13 +401,14 @@ function UserRow({
         )}
       </td>
       <td>
-        {capabilities.canChangeUserRole ? (
+        {capabilities.canChangeUserRole && !isSelf ? (
           <select
             aria-label={`Role for ${user.fullName}`}
             value={user.role}
+            disabled={pendingAction === "role"}
             onChange={(event) =>
-              void update(
-                user.id,
+              void runUpdate(
+                "role",
                 { role: event.target.value },
                 "Role updated.",
               )
@@ -363,7 +433,7 @@ function UserRow({
           >
             {isActive ? "Active" : "Deactivated"}
           </span>
-          {capabilities.canChangeUserStatus && (
+          {capabilities.canChangeUserStatus && !isSelf && (
             <button
               className={
                 isActive
@@ -371,9 +441,10 @@ function UserRow({
                   : "button button-secondary"
               }
               type="button"
+              disabled={pendingAction === "status"}
               onClick={() =>
-                void update(
-                  user.id,
+                void runUpdate(
+                  "status",
                   {
                     status: isActive
                       ? USER_STATUSES.DEACTIVATED
@@ -393,16 +464,22 @@ function UserRow({
           <button
             className="button button-primary"
             type="button"
+            disabled={pendingAction === "profile"}
             onClick={() =>
-              void update(
-                user.id,
+              void runUpdate(
+                "profile",
                 { fullName: name, email },
                 "Profile updated.",
               )
             }
           >
-            Save
+            {pendingAction === "profile" ? "Saving..." : "Save"}
           </button>
+        )}
+        {rowError && (
+          <p className="notice notice-error row-feedback" role="alert">
+            {rowError}
+          </p>
         )}
       </td>
     </tr>
