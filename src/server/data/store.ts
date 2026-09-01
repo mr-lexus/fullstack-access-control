@@ -11,7 +11,9 @@ export type AppStore = {
 };
 
 const STORE_KEY = Symbol.for("fullstack-access-control.store");
-const globalStore = globalThis as typeof globalThis & { [STORE_KEY]?: AppStore };
+const globalStore = globalThis as typeof globalThis & {
+  [STORE_KEY]?: AppStore;
+};
 
 function makeStore(): AppStore {
   return {

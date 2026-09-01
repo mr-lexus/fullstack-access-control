@@ -21,7 +21,10 @@ export function AppNavigation({ items }: { items: NavigationItem[] }) {
         <div className="nav-links">
           {items.map((item) => {
             const isActive = item.exact
-              ? pathname === item.href || item.activePrefixes?.some((prefix) => pathname.startsWith(prefix))
+              ? pathname === item.href ||
+                item.activePrefixes?.some((prefix) =>
+                  pathname.startsWith(prefix),
+                )
               : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (

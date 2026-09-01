@@ -6,10 +6,19 @@ import { updateUserProfile } from "@/server/users/user-service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+): Promise<NextResponse> {
   try {
     const { id } = await context.params;
-    return NextResponse.json({ user: updateUserProfile(await requireCurrentActiveUser(), id, await readJson(request)) });
+    return NextResponse.json({
+      user: updateUserProfile(
+        await requireCurrentActiveUser(),
+        id,
+        await readJson(request),
+      ),
+    });
   } catch (error) {
     return errorResponse(error);
   }

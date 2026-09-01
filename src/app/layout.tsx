@@ -6,15 +6,24 @@ import { canManageUsers, canViewContent } from "@/server/auth/permissions";
 
 export const metadata: Metadata = { title: "Access Control" };
 
-export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   const auth = await getPageAuth(() => true);
   const isAuthenticated = auth.kind === "authorized";
   const items = isAuthenticated
     ? [
-        ...(canManageUsers(auth.user) ? [{ href: "/manage-users", label: "Manage users" }] : []),
+        ...(canManageUsers(auth.user)
+          ? [{ href: "/manage-users", label: "Manage users" }]
+          : []),
         ...(canViewContent(auth.user)
           ? [
-              { href: "/content", label: "Clients", exact: true, activePrefixes: ["/content/client/"] },
+              {
+                href: "/content",
+                label: "Clients",
+                exact: true,
+                activePrefixes: ["/content/client/"],
+              },
               { href: "/content/me", label: "My profile" },
             ]
           : []),

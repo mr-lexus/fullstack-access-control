@@ -3,7 +3,9 @@ import { resetStore, getStore } from "@/server/data/store";
 import { listClients } from "@/server/clients/client-service";
 import { AppError } from "@/domain/errors";
 
-beforeEach(() => { resetStore(); });
+beforeEach(() => {
+  resetStore();
+});
 
 describe("server-paginated clients", () => {
   it("returns only the requested page and a total over 1000", () => {
@@ -17,8 +19,14 @@ describe("server-paginated clients", () => {
   });
 
   it("allows manager/user and forbids IT", () => {
-    expect(listClients(getStore().users.get("anna")!, 1, 1).items).toHaveLength(1);
-    expect(listClients(getStore().users.get("olena")!, 1, 1).items).toHaveLength(1);
-    expect(() => listClients(getStore().users.get("ivan")!, 1, 1)).toThrowError(AppError);
+    expect(listClients(getStore().users.get("anna")!, 1, 1).items).toHaveLength(
+      1,
+    );
+    expect(
+      listClients(getStore().users.get("olena")!, 1, 1).items,
+    ).toHaveLength(1);
+    expect(() => listClients(getStore().users.get("ivan")!, 1, 1)).toThrowError(
+      AppError,
+    );
   });
 });

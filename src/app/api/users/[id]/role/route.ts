@@ -6,7 +6,10 @@ import { changeUserRole } from "@/server/users/user-service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+): Promise<NextResponse> {
   try {
     const { id } = await context.params;
     const actor = await requireCurrentActiveUser();

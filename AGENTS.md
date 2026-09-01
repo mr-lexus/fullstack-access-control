@@ -2,12 +2,14 @@
 
 ## Commands
 
-- Install: `npm install`
+- Install: `npm ci`
 - Development: `npm run dev`
+- Formatting: `npm run format` / `npm run format:check`
 - Tests: `npm test`
 - Lint: `npm run lint`
 - Typecheck: `npm run typecheck`
 - Production: `npm run build` then `npm run start`
+- HTTP acceptance: `npm run build` then `npm run verify:acceptance`
 
 ## Architecture boundaries
 
@@ -18,6 +20,7 @@
 - `src/server/clients` owns client content access enforcement and server-side pagination.
 - `src/app/api` contains HTTP adapters only.
 - `src/components` contains presentation and UX only.
+
 ## Dependency direction
 
 - `src/domain` must not import `src/server`, `src/app`, or `src/components`.
@@ -41,16 +44,17 @@
 - At least one active IT account must always remain.
 - If both last-active-IT and self-deactivation/self-demotion apply, `LAST_ACTIVE_IT` wins.
 - IT cannot view content pages.
-- A role that can access Manage Users must also define its user visibility scope, typically through VIEW_ALL_USERS or VIEW_DIRECT_REPORTS.
+- A role that can access Manage Users must also define its user visibility scope, typically through `VIEW_ALL_USERS` or `VIEW_DIRECT_REPORTS`.
 
-## Counter-intuitive project rules
+## Protected request behavior
 
 - Unauthenticated protected pages redirect to `/login`; authenticated but unauthorized protected pages return a real HTTP 403.
-- Protected API order is: authenticate the current active user → authorize the operation → parse/validate operation input → execute. Malformed unauthenticated requests still return 401.
+- Protected API handlers resolve the current active user before parsing protected operation input where applicable. Authorization remains centralized in policies/services; no protected mutation or data access executes without authorization.
+- Malformed unauthenticated protected requests return 401 rather than validation details; authenticated malformed requests return the appropriate application validation error.
+- Protected browser fetches hard-navigate to `/login` on 401; 403 remains a forbidden/error state and does not log out.
+- Protected auth-dependent pages and APIs keep dynamic/no-store semantics where required; stale caching must not break immediate deactivation.
 - A deactivated direct report is still a direct report, so managers must not filter reports by status.
 - A user may report to a deactivated manager; that relationship remains valid and is not repaired automatically.
-- Protected browser fetches hard-navigate to `/login` on 401; 403 remains a forbidden/error state and does not log out.
-- Protected auth-dependent pages and APIs must keep `force-dynamic`/`no-store` semantics where required; stale caching must not break immediate deactivation.
 - Preserve error precedence: `LAST_ACTIVE_IT` wins when it overlaps self-deactivation or self-demotion.
 
 ## Adding a fourth role

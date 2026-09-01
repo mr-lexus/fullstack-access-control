@@ -8,7 +8,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<NextResponse> {
   try {
-    return NextResponse.json({ users: listUsers(await requireCurrentActiveUser()) }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json(
+      { users: listUsers(await requireCurrentActiveUser()) },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     return errorResponse(error);
   }
@@ -16,7 +19,15 @@ export async function GET(): Promise<NextResponse> {
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
-    return NextResponse.json({ user: createUser(await requireCurrentActiveUser(), await readJson(request)) }, { status: 201 });
+    return NextResponse.json(
+      {
+        user: createUser(
+          await requireCurrentActiveUser(),
+          await readJson(request),
+        ),
+      },
+      { status: 201 },
+    );
   } catch (error) {
     return errorResponse(error);
   }

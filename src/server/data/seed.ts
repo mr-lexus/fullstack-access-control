@@ -24,16 +24,86 @@ const seedUser = (
 
 export function createSeedUsers(): UserRecord[] {
   return [
-    seedUser("ivan", "Ivan", "ivan.it@example.com", ROLES.IT, USER_STATUSES.ACTIVE, null),
-    seedUser("kateryna", "Kateryna", "kateryna.it@example.com", ROLES.IT, USER_STATUSES.ACTIVE, null),
-    seedUser("anna", "Anna", "anna.manager@example.com", ROLES.MANAGER, USER_STATUSES.ACTIVE, null),
-    seedUser("petro", "Petro", "petro.manager@example.com", ROLES.MANAGER, USER_STATUSES.DEACTIVATED, null),
-    seedUser("marta", "Marta", "marta.manager@example.com", ROLES.MANAGER, USER_STATUSES.ACTIVE, null),
-    seedUser("olena", "Olena", "olena.user@example.com", ROLES.USER, USER_STATUSES.ACTIVE, "anna"),
-    seedUser("taras", "Taras", "taras.user@example.com", ROLES.USER, USER_STATUSES.ACTIVE, "anna"),
-    seedUser("nina", "Nina", "nina.user@example.com", ROLES.USER, USER_STATUSES.DEACTIVATED, "anna"),
-    seedUser("bohdan", "Bohdan", "bohdan.user@example.com", ROLES.USER, USER_STATUSES.ACTIVE, "anna"),
-    seedUser("dmytro", "Dmytro", "dmytro.user@example.com", ROLES.USER, USER_STATUSES.ACTIVE, "petro"),
+    seedUser(
+      "ivan",
+      "Ivan",
+      "ivan.it@example.com",
+      ROLES.IT,
+      USER_STATUSES.ACTIVE,
+      null,
+    ),
+    seedUser(
+      "kateryna",
+      "Kateryna",
+      "kateryna.it@example.com",
+      ROLES.IT,
+      USER_STATUSES.ACTIVE,
+      null,
+    ),
+    seedUser(
+      "anna",
+      "Anna",
+      "anna.manager@example.com",
+      ROLES.MANAGER,
+      USER_STATUSES.ACTIVE,
+      null,
+    ),
+    seedUser(
+      "petro",
+      "Petro",
+      "petro.manager@example.com",
+      ROLES.MANAGER,
+      USER_STATUSES.DEACTIVATED,
+      null,
+    ),
+    seedUser(
+      "marta",
+      "Marta",
+      "marta.manager@example.com",
+      ROLES.MANAGER,
+      USER_STATUSES.ACTIVE,
+      null,
+    ),
+    seedUser(
+      "olena",
+      "Olena",
+      "olena.user@example.com",
+      ROLES.USER,
+      USER_STATUSES.ACTIVE,
+      "anna",
+    ),
+    seedUser(
+      "taras",
+      "Taras",
+      "taras.user@example.com",
+      ROLES.USER,
+      USER_STATUSES.ACTIVE,
+      "anna",
+    ),
+    seedUser(
+      "nina",
+      "Nina",
+      "nina.user@example.com",
+      ROLES.USER,
+      USER_STATUSES.DEACTIVATED,
+      "anna",
+    ),
+    seedUser(
+      "bohdan",
+      "Bohdan",
+      "bohdan.user@example.com",
+      ROLES.USER,
+      USER_STATUSES.ACTIVE,
+      "anna",
+    ),
+    seedUser(
+      "dmytro",
+      "Dmytro",
+      "dmytro.user@example.com",
+      ROLES.USER,
+      USER_STATUSES.ACTIVE,
+      "petro",
+    ),
   ];
 }
 
@@ -48,7 +118,8 @@ export function createSeedClients(): Client[] {
       company: `Company ${((index * 7) % 300) + 1}`,
       email: `client${number}@example.com`,
       country: COUNTRIES[index % COUNTRIES.length],
-      status: index % 5 === 0 ? CLIENT_STATUSES.CHURNED : CLIENT_STATUSES.ACTIVE,
+      status:
+        index % 5 === 0 ? CLIENT_STATUSES.CHURNED : CLIENT_STATUSES.ACTIVE,
       createdAt: new Date(Date.UTC(2026, 0, 1 + (index % 28))).toISOString(),
     };
   });

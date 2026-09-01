@@ -1,101 +1,138 @@
 # Fullstack Access Control
 
-A small Next.js App Router application demonstrating server-enforced authorization with deterministic in-memory data.
+A small Next.js App Router application demonstrating server-enforced authorization with deterministic in-memory data. It implements the assignment’s non-hierarchical IT, manager, and user access rules through real pages and HTTP APIs.
+
+## What it does
+
+- Defines non-hierarchical IT, manager, and user roles.
+- Enforces authorization on the server, independently of UI visibility.
+- Applies object-level manager permissions to direct reports.
+- Makes deactivation effective on the next protected request for an existing session.
+- Serves 1,250 clients through server-side pagination.
+- Exposes real HTTP boundaries with distinct 401, 403, 400, and invariant error responses.
+- Uses a deterministic process-local in-memory seed.
+
+## Tech stack
+
+| Technology      | Use                                        |
+| --------------- | ------------------------------------------ |
+| Next.js         | App Router pages and route handlers        |
+| React           | Browser UI                                 |
+| TypeScript      | Strict application types                   |
+| Vitest          | Unit and policy tests                      |
+| In-memory store | Deterministic users, sessions, and clients |
+| Plain CSS       | Application styling                        |
 
 ## Requirements and commands
 
-Node.js 20+ is supported. From a fresh clone:
+Node.js 22+ is supported. From a fresh clone:
 
 ```text
-npm install
+npm ci
 npm run dev
 ```
 
-Quality checks:
+Quality gates:
 
 ```text
-npm test
+npm run format:check
 npm run lint
 npm run typecheck
+npm test
 npm run build
-npm run start
+npm run verify:acceptance
 ```
 
-No database, Docker, external authentication, or mandatory environment variables are required. Users, clients, and sessions are process-local in-memory state and reset when the server process restarts. This is intentional because the assignment explicitly requires in-memory data. Seed/test passwords are intentionally stored as plain text because the assignment explicitly excludes password hashing. There is no public signup/registration flow; the initial accounts are seeded and IT can create additional users through the protected user-management API.
+`verify:acceptance` runs against the built production server, so run `npm run build` first. It starts and controls an isolated server on port 3100, uses explicit HTTP cookies, and exits non-zero on any failed scenario. Each restart creates a clean deterministic in-memory seed.
+
+No database, Docker, external authentication, or mandatory environment variables are required. Users, clients, and sessions are process-local state and reset when the server process restarts. This is intentional because the assignment requires in-memory data. Seed/test passwords are intentionally stored as plain text because password hashing is outside the assignment scope. There is no public signup/registration flow; initial accounts are seeded and IT can create additional users through the protected API.
 
 ## Seeded accounts
 
-Every account uses the password `password123`.
+Every row explicitly lists the seeded password.
 
-| Name | Email | Role | Status | Manager |
-| --- | --- | --- | --- | --- |
-| Ivan | ivan.it@example.com | IT | active | — |
-| Kateryna | kateryna.it@example.com | IT | active | — |
-| Anna | anna.manager@example.com | manager | active | — |
-| Petro | petro.manager@example.com | manager | deactivated | — |
-| Marta | marta.manager@example.com | manager | active | — |
-| Olena | olena.user@example.com | user | active | Anna |
-| Taras | taras.user@example.com | user | active | Anna |
-| Nina | nina.user@example.com | user | deactivated | Anna |
-| Bohdan | bohdan.user@example.com | user | active | Anna |
-| Dmytro | dmytro.user@example.com | user | active | Petro |
+| Name     | Email                     | Password    | Role    | Status      | Manager |
+| -------- | ------------------------- | ----------- | ------- | ----------- | ------- |
+| Ivan     | ivan.it@example.com       | password123 | IT      | active      | —       |
+| Kateryna | kateryna.it@example.com   | password123 | IT      | active      | —       |
+| Anna     | anna.manager@example.com  | password123 | manager | active      | —       |
+| Petro    | petro.manager@example.com | password123 | manager | deactivated | —       |
+| Marta    | marta.manager@example.com | password123 | manager | active      | —       |
+| Olena    | olena.user@example.com    | password123 | user    | active      | Anna    |
+| Taras    | taras.user@example.com    | password123 | user    | active      | Anna    |
+| Nina     | nina.user@example.com     | password123 | user    | deactivated | Anna    |
+| Bohdan   | bohdan.user@example.com   | password123 | user    | active      | Anna    |
+| Dmytro   | dmytro.user@example.com   | password123 | user    | active      | Petro   |
 
 ## Authentication and authorization
 
-I chose opaque server-side sessions instead of storing role/status authorization claims in a long-lived client token because role and account status are mutable authorization state. The browser cookie contains only a random session ID. Each protected request resolves sessionId → userId → current user record and checks the user’s current status again. This avoids stale authorization claims and makes deactivation effective on the very next protected request.
+The application uses opaque server-side sessions. The browser cookie contains only a random session ID; each protected request resolves session ID → user ID → the current user record and checks current status. This keeps mutable role and account status out of a long-lived client token and makes deactivation effective on the next protected request.
 
-Role capabilities and object-level decisions are centralized in `src/server/auth/permissions.ts` and the role definition in `src/domain/roles.ts`. User mutation invariants—including self-operation restrictions and the last-active-IT rule—are enforced synchronously in `src/server/users/user-service.ts`. API route handlers are HTTP adapters: they never accept the authenticated actor from request bodies, whitelist endpoint-specific target-user fields, and delegate authorization to server policies and services.
+Role capabilities and object-level decisions are centralized in `src/domain/roles.ts` and `src/server/auth/permissions.ts`. User mutation invariants—including self-operation restrictions and the last-active-IT rule—are enforced synchronously in `src/server/users/user-service.ts`. Route handlers are HTTP adapters: they never accept the authenticated actor from request bodies, whitelist endpoint-specific target fields, and delegate authorization to policies and services.
 
-IT accounts can manage users but cannot view content pages. Managers can view content and only edit ordinary direct reports who are not themselves or other managers. Users can view content but cannot manage users. Client records are always sliced on the server; the complete 1,250-record dataset is never sent to the browser.
+Next.js `authInterrupts` is enabled because protected pages use `forbidden()`; it makes authenticated-but-unauthorized requests return a genuine HTTP 403 instead of only rendering a 403-looking UI with HTTP 200.
+
+IT accounts can manage users but cannot view content pages. Managers can view content and edit only ordinary direct reports, including deactivated reports, but not themselves, managers, or arbitrary users. Users can view content but cannot manage users. Client records are sliced on the server; the complete 1,250-record dataset is never sent to the browser.
 
 ## Architecture
 
+```text
 Browser UI
-  ↓
-Next.js pages / API route handlers
-  ↓
-current-user.ts — authentication + active-user resolution
-  ↓
-permissions.ts — role and object-level policies
-  ↓
-user-service.ts / client-service.ts — operation enforcement
-  ↓
-in-memory store
+    |
+    v
+Next.js pages / route handlers
+    |
+    v
+current-user.ts
+    |
+    v
+permissions.ts
+    |
+    v
+user-service.ts / client-service.ts
+    |
+    v
+process-local in-memory store
+```
 
-Pages and route handlers are adapters; policies and services own authorization and operation rules. UI visibility is presentation only and is never security.
+Pages and route handlers are transport/view adapters. Reusable policy lives in auth, operation invariants live in services, and UI authorization visibility is never security.
 
 ## HTTP API
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| POST | /api/auth/login | Create a session |
-| POST | /api/auth/logout | End a session |
-| GET | /api/auth/me | Read the current user |
-| GET | /api/users | List visible users (IT → all users; manager → direct reports) |
-| POST | /api/users | Create a user |
-| PATCH | /api/users/:id/profile | Update full name/email |
-| PATCH | /api/users/:id/role | Change a user role |
-| PATCH | /api/users/:id/status | Change a user status |
-| GET | /api/clients?page=&limit= | Get one server-paginated client page |
-| GET | /api/clients/:id | Read one client |
+| Method | Endpoint                  | Purpose                                                       |
+| ------ | ------------------------- | ------------------------------------------------------------- |
+| POST   | /api/auth/login           | Create a session                                              |
+| POST   | /api/auth/logout          | End a session                                                 |
+| GET    | /api/auth/me              | Read the current user                                         |
+| GET    | /api/users                | List visible users (IT → all users; manager → direct reports) |
+| POST   | /api/users                | Create a user                                                 |
+| PATCH  | /api/users/:id/profile    | Update full name/email                                        |
+| PATCH  | /api/users/:id/role       | Change a user role                                            |
+| PATCH  | /api/users/:id/status     | Change a user status                                          |
+| GET    | /api/clients?page=&limit= | Get one server-paginated client page                          |
+| GET    | /api/clients/:id          | Read one client                                               |
 
 ## Permission decision locations
 
-- `src/domain/roles.ts` — defines roles and the role-to-capability mapping.
-- `src/server/auth/session.ts` — authenticates credentials and resolves opaque server-side sessions.
-- `src/server/auth/current-user.ts` — resolves the live user on each protected request and rejects missing or deactivated sessions.
-- `src/server/auth/permissions.ts` — contains capability checks and object-level authorization policies.
-- `src/server/users/user-service.ts` — authorizes protected user mutations and enforces account invariants.
-- `src/server/clients/client-service.ts` — enforces content access through the centralized content policy before pagination or detail access.
+- `src/domain/roles.ts` — role/capability definitions.
+- `src/server/auth/session.ts` — credential and opaque-session resolution.
+- `src/server/auth/current-user.ts` — live active-user resolution.
+- `src/server/auth/permissions.ts` — reusable capability and object-level policies.
+- `src/server/users/user-service.ts` — user-mutation authorization and invariants.
+- `src/server/clients/client-service.ts` — client-content authorization and pagination.
 
-`src/server/auth/landing.ts` applies capabilities only to choose an authenticated landing page; it does not grant access. API routes and pages invoke the policies above but do not define independent authorization rules.
+`src/server/auth/landing.ts` is navigation policy only: it selects an authenticated landing page and does not grant access.
+
+## Verification
+
+The repository includes unit and policy tests, production build verification, HTTP acceptance verification mirroring the six evaluator scenarios, and CI from a clean `npm ci`. See [docs/VERIFICATION.md](docs/VERIFICATION.md) for the exact executed evidence.
 
 ## With another four hours
 
-1. Add HTTP-level integration tests for authentication and authorization boundaries.
-2. Add client sorting/filtering with state reflected in the URL.
-3. Add a small audit trail for user-management mutations.
-4. Improve loading, empty, and error states where useful.
-5. Add Docker as the final reproducibility improvement.
+1. Browser-level E2E coverage for navigation and session-expiry UX.
+2. Client sorting/filtering with URL state.
+3. A small user-management audit trail.
+4. Richer loading, empty, and error states.
+5. Docker for reproducibility.
 
-I would keep the in-memory store because persistence is intentionally outside the scope of this assignment.
+Persistent storage remains intentionally outside the assignment scope.

@@ -23,6 +23,11 @@ export type UserRecord = User & {
 
 export type PublicUser = User;
 
+export function toPublicUser(user: UserRecord): PublicUser {
+  const { password: _password, ...publicUser } = user;
+  return publicUser;
+}
+
 export function isUserStatus(value: unknown): value is UserStatus {
   return value === USER_STATUSES.ACTIVE || value === USER_STATUSES.DEACTIVATED;
 }

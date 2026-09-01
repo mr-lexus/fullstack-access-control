@@ -39,7 +39,9 @@ export const ROLE_DEFINITIONS: Record<Role, ReadonlySet<Capability>> = {
 };
 
 export function isRole(value: unknown): value is Role {
-  return typeof value === "string" && Object.values(ROLES).includes(value as Role);
+  return (
+    typeof value === "string" && Object.values(ROLES).includes(value as Role)
+  );
 }
 
 export function hasCapability(role: Role, capability: Capability): boolean {
