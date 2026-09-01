@@ -1,12 +1,10 @@
 import { AppError } from "@/domain/errors";
-import { CAPABILITIES, isRole, ROLES, type Role, hasCapability } from "@/domain/roles";
-import { isUserStatus, type PublicUser, type UserRecord, type UserStatus } from "@/domain/user";
+import { CAPABILITIES, isRole, ROLES } from "@/domain/roles";
+import { isUserStatus, type PublicUser, type UserRecord } from "@/domain/user";
 import { getStore } from "@/server/data/store";
 import { canChangeUserRole, canChangeUserStatus, canCreateUser, canEditUserProfile, canViewUsers, can } from "@/server/auth/permissions";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export type CreateUserInput = { fullName: string; email: string; password: string; role: Role; status: UserStatus; managerId: string | null };
-
 function normalizeEmail(value: unknown): string {
   if (typeof value !== "string") throw new AppError("INVALID_INPUT", "Email is required.");
   const email = value.trim().toLowerCase();
@@ -82,7 +80,7 @@ export function changeUserRole(actor: UserRecord, targetId: string, roleValue: u
   const target = getTarget(targetId);
   if (!isRole(roleValue)) throw new AppError("INVALID_INPUT", "Role is invalid.");
   if (target.role === ROLES.IT && target.status === "active" && roleValue !== ROLES.IT && countActiveIt() <= 1) throw new AppError("LAST_ACTIVE_IT", "The last active IT account cannot lose its IT role.");
-  if (actor.id === target.id && target.role === ROLES.IT && roleValue !== ROLES.IT) throw new AppError("CANNOT_CHANGE_OWN_ROLE", "You cannot remove your own IT role.");
+  if (actor.id === target.id && roleValue !== target.role) throw new AppError("CANNOT_CHANGE_OWN_ROLE", "You cannot change your own role.");
   target.role = roleValue;
   return publicUser(target);
 }

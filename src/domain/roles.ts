@@ -45,3 +45,7 @@ export function isRole(value: unknown): value is Role {
 export function hasCapability(role: Role, capability: Capability): boolean {
   return ROLE_DEFINITIONS[role].has(capability);
 }
+
+export function managesDirectReports(role: Role): boolean {
+  return hasCapability(role, CAPABILITIES.EDIT_DIRECT_REPORT_PROFILE);
+}

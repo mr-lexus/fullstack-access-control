@@ -24,9 +24,10 @@ describe("user mutation authorization and invariants", () => {
     try { changeUserStatus(ivan, "ivan", "deactivated"); } catch (error) { expect((error as AppError).code).toBe("LAST_ACTIVE_IT"); }
   });
 
-  it("protects the equivalent final-IT role change and allows inactive IT changes", () => {
+  it("protects a generic self-role change and preserves final-IT precedence", () => {
     const ivan = actor("ivan");
     expect(() => changeUserRole(ivan, "ivan", ROLES.MANAGER)).toThrowError(AppError);
+    try { changeUserRole(ivan, "ivan", ROLES.MANAGER); } catch (error) { expect((error as AppError).code).toBe("CANNOT_CHANGE_OWN_ROLE"); }
     changeUserRole(ivan, "kateryna", ROLES.MANAGER);
     try { changeUserRole(ivan, "ivan", ROLES.MANAGER); } catch (error) { expect((error as AppError).code).toBe("LAST_ACTIVE_IT"); }
     const inactive = getStore().users.get("kateryna")!;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CAPABILITIES, hasCapability, ROLES, type Role } from "@/domain/roles";
+import { CAPABILITIES, hasCapability, managesDirectReports, ROLES, type Role } from "@/domain/roles";
 import { USER_STATUSES, type UserStatus } from "@/domain/user";
 import { handleUnauthenticatedResponse } from "./handle-unauthenticated-response";
 
@@ -210,7 +210,8 @@ function UserRow({
   const [email, setEmail] = useState(user.email);
   const isActive = user.status === USER_STATUSES.ACTIVE;
   const canEditProfile =
-    capabilities.canEditAnyUserProfile || capabilities.canEditDirectReportProfile;
+    capabilities.canEditAnyUserProfile ||
+    (capabilities.canEditDirectReportProfile && !managesDirectReports(user.role));
 
   return (
     <tr>

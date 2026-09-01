@@ -1,4 +1,4 @@
-import { CAPABILITIES, hasCapability, ROLES, type Capability } from "@/domain/roles";
+import { CAPABILITIES, hasCapability, managesDirectReports, type Capability } from "@/domain/roles";
 import type { User } from "@/domain/user";
 
 export function can(actor: User, capability: Capability): boolean {
@@ -27,7 +27,7 @@ export function canEditUserProfile(actor: User, target: User): boolean {
   return can(actor, CAPABILITIES.EDIT_DIRECT_REPORT_PROFILE) &&
     target.managerId === actor.id &&
     target.id !== actor.id &&
-    target.role !== ROLES.MANAGER;
+    !managesDirectReports(target.role);
 }
 
 export function canChangeUserRole(actor: User): boolean {

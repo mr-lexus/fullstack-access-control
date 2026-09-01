@@ -33,6 +33,7 @@
 - At least one active IT account must always remain.
 - If both last-active-IT and self-deactivation/self-demotion apply, `LAST_ACTIVE_IT` wins.
 - IT cannot view content pages.
+- A role that can access Manage Users must also define its user visibility scope, typically through VIEW_ALL_USERS or VIEW_DIRECT_REPORTS.
 
 ## Adding a fourth role
 
