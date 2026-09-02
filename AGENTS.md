@@ -57,6 +57,15 @@
 - A user may report to a deactivated manager; that relationship remains valid and is not repaired automatically.
 - Preserve error precedence: `LAST_ACTIVE_IT` wins when it overlaps self-deactivation or self-demotion.
 
+## Browser QA
+
+- Follow `docs/BROWSER_QA.md` for adversarial browser verification.
+- Run browser QA against a production build and restart the deterministic process-local server between independent clean-seed scenarios.
+- Use isolated browser contexts for multi-session authorization tests.
+- Inspect Network, HTTP status, console errors, and rendered state; DOM visibility alone is not authorization evidence.
+- Browser discovery passes are review-only: report reproducible findings before modifying code.
+- Do not add Playwright as a project dependency solely to execute the external QA playbook.
+
 ## Adding a fourth role
 
 - Add the role and its complete capability set in `src/domain/roles.ts`; the typed role map remains exhaustive.

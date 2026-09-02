@@ -125,11 +125,49 @@ Pages and route handlers are transport/view adapters. Reusable policy lives in a
 
 ## Verification
 
-The repository includes unit and policy tests, production build verification, HTTP acceptance verification mirroring the six evaluator scenarios, and CI from a clean `npm ci`. See [docs/VERIFICATION.md](docs/VERIFICATION.md) for the exact executed evidence.
+The repository includes unit and policy tests, production build verification, HTTP acceptance verification mirroring the six evaluator scenarios, and CI from a clean `npm ci`.
+
+Browser-level adversarial verification was performed against the production build with external Playwright/browser tooling. The reusable method is documented in [docs/BROWSER_QA.md](docs/BROWSER_QA.md); factual executed results are recorded separately in [docs/VERIFICATION.md](docs/VERIFICATION.md).
+
+The AI-assisted engineering process behind implementation, independent review, finding triage, targeted fixes, and regression is documented in [docs/AI_WORKFLOW.md](docs/AI_WORKFLOW.md).
+
+## AI-assisted engineering
+
+AI agents were used as engineering tools rather than as a substitute for verification.
+
+```text
+assignment + invariants
+        ↓
+focused implementation
+        ↓
+unit / policy / HTTP verification
+        ↓
+independent adversarial review
+        ↓
+browser + network QA
+        ↓
+human finding triage
+        ↓
+targeted fixes
+        ↓
+independent regression
+        ↓
+CI / submission verification
+```
+
+Key safeguards:
+
+- `AGENTS.md` gives coding agents explicit architectural boundaries and counterintuitive authorization invariants.
+- Discovery/review agents are separated from fix passes so a reviewer does not silently modify the behavior it is evaluating.
+- Browser findings require reproducible DOM, network, and HTTP evidence before they become fix tasks.
+- Previously passing behavior is re-verified after targeted changes.
+- Raw model conversations and hidden reasoning are not treated as project documentation; reusable constraints, methods, and verification evidence are.
+
+See [docs/AI_WORKFLOW.md](docs/AI_WORKFLOW.md) for the complete workflow.
 
 ## With another four hours
 
-1. Browser-level E2E coverage for navigation and session-expiry UX.
+1. Persistent in-repository Playwright E2E coverage for navigation and session-expiry regressions.
 2. Client sorting/filtering with URL state.
 3. A small user-management audit trail.
 4. Richer loading, empty, and error states.
