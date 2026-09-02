@@ -14,6 +14,8 @@ type NavigationItem = {
 export function AppNavigation({ items }: { items: NavigationItem[] }) {
   const pathname = usePathname();
 
+  if (pathname === "/login") return null;
+
   return (
     <header className="app-header">
       <nav className="nav" aria-label="Primary navigation">

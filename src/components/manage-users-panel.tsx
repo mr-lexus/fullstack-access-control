@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CAPABILITIES,
   hasCapability,
@@ -19,7 +19,8 @@ type ApiPayload = {
   error?: { code?: string; message: string };
 };
 
-type MutationResult = { ok: true } | { ok: false; message: string };
+type MutationResult =
+  { ok: true; user: PublicUser } | { ok: false; message: string };
 
 type MutationAction = "role" | "status" | "profile";
 
@@ -77,6 +78,7 @@ export function ManageUsersPanel() {
   const [message, setMessage] = useState("");
   const [currentUser, setCurrentUser] = useState<PublicUser | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const isCreatingRef = useRef(false);
   const [newUser, setNewUser] = useState<NewUser>(initialNewUser);
   const capabilities = getUserManagementCapabilities(currentUser?.role ?? null);
 
@@ -148,9 +150,13 @@ export function ManageUsersPanel() {
         };
       }
 
+      if (!payload.user) {
+        return { ok: false, message: "Update failed." };
+      }
+
       setMessage(success);
       await load();
-      return { ok: true };
+      return { ok: true, user: payload.user };
     } catch {
       return {
         ok: false,
@@ -161,8 +167,9 @@ export function ManageUsersPanel() {
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isCreating) return;
+    if (isCreatingRef.current) return;
 
+    isCreatingRef.current = true;
     setIsCreating(true);
     setError("");
     setMessage("");
@@ -190,6 +197,7 @@ export function ManageUsersPanel() {
     } catch {
       setError("Could not create the user. Please try again.");
     } finally {
+      isCreatingRef.current = false;
       setIsCreating(false);
     }
   }
@@ -345,6 +353,7 @@ function UserRow({
   const [pendingAction, setPendingAction] = useState<MutationAction | null>(
     null,
   );
+  const pendingActionRef = useRef<MutationAction | null>(null);
   const [rowError, setRowError] = useState("");
   const isSelf = currentUserId === user.id;
   const isActive = user.status === USER_STATUSES.ACTIVE;
@@ -352,25 +361,36 @@ function UserRow({
     capabilities.canEditAnyUserProfile ||
     (capabilities.canEditDirectReportProfile &&
       !managesDirectReports(user.role));
+  const isRowBusy = pendingAction !== null;
 
   async function runUpdate(
     action: MutationAction,
     body: Record<string, string>,
     success: string,
   ) {
-    if (pendingAction) return;
+    if (pendingActionRef.current) return;
 
+    pendingActionRef.current = action;
     setPendingAction(action);
     setRowError("");
-    const result = await update(user.id, body, success);
-    if (!result.ok) {
-      setRowError(result.message);
-      if (action === "profile") {
-        setName(user.fullName);
-        setEmail(user.email);
+    try {
+      const result = await update(user.id, body, success);
+      if (result.ok) {
+        if (action === "profile") {
+          setName(result.user.fullName);
+          setEmail(result.user.email);
+        }
+      } else {
+        setRowError(result.message);
+        if (action === "profile") {
+          setName(user.fullName);
+          setEmail(user.email);
+        }
       }
+    } finally {
+      pendingActionRef.current = null;
+      setPendingAction(null);
     }
-    setPendingAction(null);
   }
 
   return (
@@ -380,7 +400,7 @@ function UserRow({
           <input
             aria-label={`Name for ${user.fullName}`}
             value={name}
-            disabled={pendingAction === "profile"}
+            disabled={isRowBusy}
             onChange={(event) => setName(event.target.value)}
           />
         ) : (
@@ -393,7 +413,7 @@ function UserRow({
             aria-label={`Email for ${user.fullName}`}
             type="email"
             value={email}
-            disabled={pendingAction === "profile"}
+            disabled={isRowBusy}
             onChange={(event) => setEmail(event.target.value)}
           />
         ) : (
@@ -405,7 +425,7 @@ function UserRow({
           <select
             aria-label={`Role for ${user.fullName}`}
             value={user.role}
-            disabled={pendingAction === "role"}
+            disabled={isRowBusy}
             onChange={(event) =>
               void runUpdate(
                 "role",
@@ -441,7 +461,7 @@ function UserRow({
                   : "button button-secondary"
               }
               type="button"
-              disabled={pendingAction === "status"}
+              disabled={isRowBusy}
               onClick={() =>
                 void runUpdate(
                   "status",
@@ -454,7 +474,11 @@ function UserRow({
                 )
               }
             >
-              {isActive ? "Deactivate" : "Activate"}
+              {pendingAction === "status"
+                ? "Updating..."
+                : isActive
+                  ? "Deactivate"
+                  : "Activate"}
             </button>
           )}
         </div>
@@ -464,7 +488,7 @@ function UserRow({
           <button
             className="button button-primary"
             type="button"
-            disabled={pendingAction === "profile"}
+            disabled={isRowBusy}
             onClick={() =>
               void runUpdate(
                 "profile",
